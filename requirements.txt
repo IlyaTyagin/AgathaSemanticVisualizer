@@ -1,0 +1,6 @@
+bokeh==2.1.1
+networkx
+gensim
+sklearn
+pandas
+umap-learn
