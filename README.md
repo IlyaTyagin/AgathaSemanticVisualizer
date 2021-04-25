@@ -12,6 +12,7 @@ Visualizer is a part of a bigger AGATHA project (current version: [AGATHA C/GP](
 
 1. Clone this git repo: `git clone https://github.com/IlyaTyagin/AgathaSemanticVisualizer`
 2. Install requirements: `pip install -r requirements.txt`
+3. Download Semantic Groups description file: https://metamap.nlm.nih.gov/Docs/SemGroups_2018.txt and put it in `AgathaSemanticVisualizer` folder
 
 ## Project structure
 
