@@ -64,6 +64,7 @@ import copy
 from collections import defaultdict
 from pathlib import Path
 import pathlib
+import urllib
 import os
 import pickle
 import json
@@ -1018,6 +1019,11 @@ slider_LDA_bias_ngrams.on_change("value",
 
 
 ## SemTypes MultiChoice pane
+
+if 'SemGroups_2018.txt' not in os.listdir():
+    print('Downloading SemGroups file...')
+    semGroups_file = urllib.request.FancyURLopener()
+    semGroups_file.retrieve("https://metamap.nlm.nih.gov/Docs/SemGroups_2018.txt", "SemGroups_2018.txt")
 
 semGroups = defaultdict(list)
 with open('SemGroups_2018.txt') as f:
