@@ -2,6 +2,10 @@
 
 Visualize hypotheses generated with AGATHA system to find new undiscovered knowledge.
 
+![Agatha Semantic Visualizer working window][main_screenshot]
+
+[main_screenshot]: https://github.com/IlyaTyagin/AgathaSemanticVisualizer/blob/main/ASV_image.png "AgathaHypothesisSpace main window"
+
 Visualizer is a part of a bigger AGATHA project (current version: [AGATHA C/GP](https://github.com/IlyaTyagin/AGATHA-C-GP))
 
 ## How to install?
