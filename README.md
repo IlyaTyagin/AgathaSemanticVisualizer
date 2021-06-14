@@ -8,6 +8,8 @@ Visualize hypotheses generated with AGATHA system to assist the process of findi
 
 Visualizer is a part of a bigger AGATHA project (current version: [AGATHA-C/GP](https://github.com/IlyaTyagin/AGATHA-C-GP))
 
+**Project wiki with additional details is available on GitHub:** [Wiki](https://github.com/IlyaTyagin/AgathaSemanticVisualizer/wiki)
+
 ## How to install?
 
 1. Clone this git repo: `git clone https://github.com/IlyaTyagin/AgathaSemanticVisualizer`
@@ -37,7 +39,7 @@ If you already have a checkpoint and just want to use it, back-end part is not r
 
 First of all, you need to obtain a checkpoint file you want to visualize (you need to either contact me or generate it yourself from the AGATHA full model).
 
-When the checkpoint is obtained, you need to go to `~/AgathaSemanticVisualizer/Checkpoints` directory and paste the name of the checkpoint inside the file `checkpoint_name.txt`. This fine should contain only one line with the name of the desired checkpoint. If your `Checkpoints` folder contains multiple checkpoints, the visualizer will read only the one mentioned in `checkpoint_name.txt`.
+When the checkpoint is obtained, you need to go to `~/AgathaSemanticVisualizer/Checkpoints` directory and paste the name of the checkpoint inside the file `checkpoint_name.txt`. This file should contain only one line with the name of the desired checkpoint. If your `Checkpoints` folder contains multiple checkpoints, the visualizer will read only the one mentioned in `checkpoint_name.txt`.
 
 Then you can run 2 two `bokeh` servers:
 
