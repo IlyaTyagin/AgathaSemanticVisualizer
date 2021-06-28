@@ -76,22 +76,6 @@ from sklearn.manifold import MDS
 
                 ##### GLOBAL CONSTANTS AND VARIABLES #####
 
-#modelDataPath = '/home/ityagin/Agatha_experiments/TopicModelsTuning/BokehServer/dataSource_alcohol_anemia.pkl'
-#pathToGraph = '/home/ityagin/Agatha_experiments/TopicModelsTuning/BokehServer/network_alcohol_anemia.pkl'
-#pathToSession = '/home/ityagin/Agatha_experiments/TopicModelsTuning/BokehServer/session_alcohol_anemia.pkl'
-#pathToSession = '/home/ityagin/Agatha_experiments/TopicModelsTuning/BokehServer/fullSession_alcohol_anemia.pkl'
-#pathToSession = '/home/ityagin/Agatha_experiments/TopicModelsTuning/BokehServer/fullSession_alcohol_anemia_correct_sentenceTokens.pkl'
-
-pathToSession = '/home/ityagin/Agatha_experiments/TopicModelsTuning/BokehServer/session_SARS_deforestation.pkl'
-
-#pathToTermsDict = 'mTermsDict.json'
-#with open(pathToTermsDict) as f:
-#    mDict = json.load(f)
-    
-#pathToTermsDict = 'mTermsDict_full.pkl'
-#with open(pathToTermsDict, 'rb') as f:
-#    mDict = pickle.load(f)
-
 path = pathlib.Path(os.getcwd())
 txtPath = path.parent / (path.name + '/Checkpoints/checkpoint_name.txt')    
 with open(txtPath) as f:
@@ -122,12 +106,17 @@ fontConst = 0.8
 
 rangeX = 5
 
+## 'Shortest path in detail' params
+print_nTokensPerTopicSP = 8
 hypRangeX = 2
 hypRangeY = 30
 hypLabelsFontSize = '10px'
-hypSP_distanceBetweenNodes = 7
-hypGlyphHeight = 5
+
+hypGlyphHeight = print_nTokensPerTopicSP
 hypGlyphWidth = 3
+
+#hypSP_distanceBetweenNodes = 7
+hypSP_distanceBetweenNodes = print_nTokensPerTopicSP + 2
 
 LDA_nTopics = 100
 LDA_alpha = 0.001
@@ -136,7 +125,7 @@ LDA_beta = 0.001
 KNN_nNeighbors = 4
 KNN_nTopicsContributingToCentroidCalculation = 15
 
-print_nTokensPerTopicSP = 5
+
 
 
                 ##### GLOBAL STATE VARIABLES #####
@@ -294,7 +283,17 @@ hypPlot.xaxis.visible = False
 hypPlot.yaxis.visible = False
 
 
+def Add_pref_name(cui_nodename):
+    if cui_nodename[:2] != 'm:':
+        return cui_nodename
+    cui_nodename_key = cui_nodename[2:]
+    if cui_nodename_key in mDict:
+        cui_pref_name = mDict[cui_nodename_key]
+        cui_nodename = f'{cui_nodename}\n{cui_pref_name}'
+    return cui_nodename
 
+    
+    
             ##### CALLBACK FUNCTIONS #####
 
 def Callback_BOKEH_ClickOnNode(attr, old, new) -> None:
@@ -379,6 +378,11 @@ def Callback_BOKEH_ClickOnNode(attr, old, new) -> None:
             print_nTokensPerTopicSP,
             termsDict=mDict,
         ) if 'topic' in x else x)
+    
+        
+    ## This will add preferred names to UMLS terms on "Shortest path in detail" pane
+    hypCoordinatesNew['TopicInfo'] = hypCoordinatesNew['TopicInfo'] \
+        .apply(Add_pref_name)
     
     hypCoordinatesCDSNew = ColumnDataSource(data=hypCoordinatesNew)
     hypCoordinatesCDS.data = dict(hypCoordinatesCDSNew.data)
@@ -593,6 +597,10 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
             termsDict=mDict,
         ) if 'topic' in x else x)
     
+    ## This will add preferred names to UMLS terms on "Shortest path in detail" pane
+    hypCoordinates['TopicInfo'] = hypCoordinates['TopicInfo'] \
+        .apply(Add_pref_name)
+    
     hypCoordinatesCDS = ColumnDataSource(data=hypCoordinates)
 
     hypLabels = Text(x='x', y='y', text='TopicInfo', 
@@ -618,7 +626,7 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
         #hypWheel_zoom,
         HoverTool(tooltips=None), 
         #TapTool(),
-        PanTool()
+        PanTool(dimensions='height')
     )
     #hypPlot.toolbar.active_scroll = hypWheel_zoom
     hypPlot.toolbar_location = None
@@ -957,13 +965,13 @@ def BOKEH_UpdateParam(paramName: str, val:Any) -> None:
 slider_KNN_n_neighbors = Slider(start=2, end=15, value=session['params']['KNN_nNeighbors'], step=1, 
                                 title="N neighbors")
 slider_KNN_n_neighbors.on_change("value", 
-                                 lambda attr, old, new: BOKEH_UpdateParam('KNN_nNeighbors', new))
+                                 lambda attr, old, new: BOKEH_UpdateParam('KNN_nNeighbors', int(new)))
 
 
 slider_KNN_top_n_tokens = Slider(start=3, end=50, value=10, step=1, 
                                  title="Top N significant tokens in centroids coords")
 slider_KNN_top_n_tokens.on_change("value", 
-                                 lambda attr, old, new: BOKEH_UpdateParam('KNN_nTopicsContributingToCentroidCalculation', new))
+                                 lambda attr, old, new: BOKEH_UpdateParam('KNN_nTopicsContributingToCentroidCalculation', int(new)))
 
 ## LDA settings ## 
 
@@ -976,21 +984,21 @@ div_LDA= Div(
 slider_LDA_n_topics = Slider(start=10, end=100, value=session['params']['LDA_nTopics'], step=1, 
                              title="Number of LDA topics")
 slider_LDA_n_topics.on_change("value", 
-                              lambda attr, old, new: BOKEH_UpdateParam('LDA_nTopics', new))
+                              lambda attr, old, new: BOKEH_UpdateParam('LDA_nTopics', int(new)))
 
 
 slider_LDA_alpha = Slider(start=-4, end=1, value=-2, step=1, 
                           title="LDA alpha parameter",
                           format=FuncTickFormatter(code="return (10**tick).toFixed(4)"))
 slider_LDA_alpha.on_change("value", 
-                           lambda attr, old, new: BOKEH_UpdateParam('LDA_alpha', 10**new))
+                           lambda attr, old, new: BOKEH_UpdateParam('LDA_alpha', float(10**new)))
 
 
 slider_LDA_beta = Slider(start=-3, end=1, value=-2, step=1, 
                          title="LDA beta parameter",
                          format=FuncTickFormatter(code="return (10**tick).toFixed(4)"))
 slider_LDA_beta.on_change("value", 
-                           lambda attr, old, new: BOKEH_UpdateParam('LDA_beta', 10**new))
+                           lambda attr, old, new: BOKEH_UpdateParam('LDA_beta', float(10**new)))
 
 
 div_LDA_biases= Div(
@@ -998,24 +1006,24 @@ div_LDA_biases= Div(
     style = {'font-size': 'medium'}
 )
 
-slider_LDA_bias_mesh = Slider(start=1, end=50, value=session['params']['LDA_bias_mesh'], step=1, title="mesh/umls")
+slider_LDA_bias_mesh = Slider(start=1, end=10, value=session['params']['LDA_bias_mesh'], step=1, title="mesh/umls")
 slider_LDA_bias_mesh.on_change("value", 
-                              lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_mesh', new))
+                              lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_mesh', int(new)))
 
 
 slider_LDA_bias_lemmas = Slider(start=1, end=5, value=session['params']['LDA_bias_lemmas'], step=1, title="lemmas")
 slider_LDA_bias_lemmas.on_change("value", 
-                              lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_lemmas', new))
+                              lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_lemmas', int(new)))
 
 
 slider_LDA_bias_entities = Slider(start=1, end=5, value=session['params']['LDA_bias_entities'], step=1, title="entities")
 slider_LDA_bias_entities.on_change("value", 
-                              lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_entities', new))
+                              lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_entities', int(new)))
 
 
 slider_LDA_bias_ngrams = Slider(start=1, end=5, value=session['params']['LDA_bias_ngrams'], step=1, title="ngrams")
 slider_LDA_bias_ngrams.on_change("value", 
-                                 lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_ngrams', new))
+                                 lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_ngrams', int(new)))
 
 
 ## SemTypes MultiChoice pane
@@ -1038,7 +1046,7 @@ for k in semGroups:
 LABELS.append('unknown')
 
 multi_choice = MultiChoice(
-    value=[], 
+    value=list(session['params']['LDA_bias_prefSemTypes']), 
     options=LABELS, 
     title='Preferred Semantic Types: ',
     height=200,
@@ -1051,7 +1059,7 @@ multi_choice.js_on_change("value", CustomJS(code="""
 """))
 
 multi_choice.on_change("value", 
-                       lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_prefSemTypes', new))
+                       lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_prefSemTypes', set(new)))
 
 
 ## Reconstruct button ##

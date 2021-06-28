@@ -49,7 +49,14 @@ def BOKEH_HypSpace_CustomizeFigureObj(
     We use it in Hypothesis space visualisation.
     '''
     hypSpaceTitle = Title()
-    hypSpaceTitle.text = f'''Hypothesis space of {source} --> {target} (Agatha score: {session['agathaScore']})'''
+    
+    try:
+        source = session['mDict'][source[2:]]
+        target = session['mDict'][target[2:]]
+    except:
+        pass
+    hypSpaceTitle.text = \
+        f'''Hypothesis space of {source} --> {target} (Agatha score: {str(session['agathaScore'])[:5]})'''
     
     figureObj.title = hypSpaceTitle
     figureObj.x_range = Range1d(-rangeX, rangeX)

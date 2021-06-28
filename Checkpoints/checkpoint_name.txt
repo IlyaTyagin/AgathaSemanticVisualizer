@@ -1,1 +1,1 @@
-vis_ckpt_c0011847_c0080141_time_20210425_14_52
+vis_ckpt_COVID19_-_Lung_diseases.vckpt
