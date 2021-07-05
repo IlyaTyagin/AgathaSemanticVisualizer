@@ -2,5 +2,5 @@ bokeh==2.1.1
 networkx
 gensim
 sklearn
-pandas
+pandas==1.2.3
 umap-learn
