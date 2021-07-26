@@ -25,12 +25,16 @@ import json
 
     ## Opening current ckpt ##
 
-path = pathlib.Path(os.getcwd())
-txtPath = path.parent / (path.name + '/Checkpoints/checkpoint_name.txt')    
-with open(txtPath) as f:
-    pathToSession = f.read().strip()
-    print(f'File {pathToSession} loaded.')
-    
+pathToSession = io.BOKEH_GetVckptFromURL(curdoc().session_context)
+
+if not pathToSession:
+    path = pathlib.Path(os.getcwd())
+    txtPath = path.parent / (path.name + '/Checkpoints/checkpoint_name.txt')    
+    with open(txtPath) as f:
+        pathToSession = f.read().strip()
+        print(f'File {pathToSession} loaded.')
+
+
 pathC = pathlib.Path(os.getcwd())
 filePath = pathC.parent / (pathC.name + f'/Checkpoints/{pathToSession}')  
 session = io.PICKLE_LoadSession(filePath)
@@ -78,7 +82,7 @@ df_sent_tokens = pd.DataFrame.from_dict(
 df_sentences_show = df_sentences \
     .merge(df_sent_tokens, how='left', on = 'Sentence ID')
 df_sentences_show['Sentence Tokens'] = df_sentences_show['Sentence Tokens'] \
-    .apply(lambda x: '; '.join(x))
+    .apply(lambda x: '; '.join(x) if type(x) == list else '')
 
 
     ## Callback function ##
@@ -161,6 +165,7 @@ data_table = DataTable(
             ],
     height_policy='max',
     width_policy='max',
+    height=800,
     #width=1200,
 )
 
@@ -191,6 +196,7 @@ tokens_table = DataTable(
                    ),
             ],
     height_policy='max',
+    height=800,
     #width=600,
 )
 
@@ -251,7 +257,7 @@ controls = column(
     button_search,
     button_download,
     multi_choice,
-    #height = 300,
+    #height = 800,
     width = 300,
     #sizing_mode = 'fit',
     #css_classes=['scrollable'], sizing_mode = 'fixed',

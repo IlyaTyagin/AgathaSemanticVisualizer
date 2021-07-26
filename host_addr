@@ -1,0 +1,3 @@
+ip: localhost
+vis_port: 5005
+corp_port: 5006

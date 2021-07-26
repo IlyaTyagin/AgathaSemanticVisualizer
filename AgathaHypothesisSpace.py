@@ -21,7 +21,7 @@ from bokeh.layouts import (row,
                            Spacer,
                           )
 
-from bokeh.events import MouseWheel
+from bokeh.events import MouseWheel, ButtonClick
 
 from bokeh.models import (BoxSelectTool,
                           WheelZoomTool,
@@ -50,6 +50,7 @@ from bokeh.models import (BoxSelectTool,
                           Dropdown,
                           Select,
                           MultiChoice,
+                          OpenURL
                          )
 #from bokeh.core.enums import AutosizeMode
 from bokeh.models.annotations import Title
@@ -89,9 +90,48 @@ locVars['savePath'] = ''
 #with open(modelDataPath, 'rb') as f:
 #    modelData = pickle.load(f)
 
+
 pathC = pathlib.Path(os.getcwd())
+
 filePath = pathC.parent / (pathC.name + f'/Checkpoints/{pathToSession}')  
 session = io.PICKLE_LoadSession(filePath)
+
+args = curdoc().session_context.request.arguments
+
+try:
+    vckpt_name = args.get('vckpt')[0].decode("utf-8")
+except:
+    vckpt_name = ''
+
+    
+## Host addresses (file host_addr)
+host_addr = dict()
+with open('host_addr') as f:
+    for line in f:
+        k, v = line.strip().split(': ')
+        host_addr[k] = v
+assert len(host_addr) == 3
+
+if '.vckpt' not in vckpt_name:
+## empty graph (testing)
+    for key in session:
+        if key != 'params':
+            try:
+                session[key].keys()
+                session[key] = dict()
+            except:
+                session[key] = None
+    session['nxGraph'] = nx.Graph()
+    session['centroidsCoords']['Coordinates'] = dict()
+## 
+else:
+    try:
+        filePath = pathC.parent / (pathC.name + f'/Checkpoints/{vckpt_name}')  
+        session = io.PICKLE_LoadSession(filePath)
+    except Exception as e:
+        print(e)
+
+#session['params']['selected_vckpt'] = pathToSession
 
 mDict = session['mDict']
 
@@ -146,7 +186,7 @@ G = session['nxGraph']
 #nxCoordinates = nx.spring_layout(G, k = 0.8, scale = 4)
 nxCoordinates = gr.SKLEARN_CalculateGraphLayout(session)
 shortestPathNodes = nx.shortest_path(G, session['source'], session['target'])
-shortestPathEdges = set(zip(shortestPathNodes,shortestPathNodes[1:]))
+shortestPathEdges = set(zip(shortestPathNodes,shortestPathNodes[1:])) if shortestPathNodes else set()
 
 edge_attrs = dict()
 for start_node, end_node in G.edges:
@@ -195,7 +235,7 @@ def BOKEH_HypSpace_MakeGraphRenderer(
                           nxCoordinates)
     
     shortestPathNodes = nx.shortest_path(session['nxGraph'], session['source'], session['target'])
-    shortestPathEdges = set(zip(shortestPathNodes,shortestPathNodes[1:]))
+    shortestPathEdges = set(zip(shortestPathNodes,shortestPathNodes[1:])) if shortestPathNodes else set()
 
     edge_attrs = dict()
     for start_node, end_node in session['nxGraph'].edges:
@@ -210,14 +250,17 @@ def BOKEH_HypSpace_MakeGraphRenderer(
         edge_attrs, 
         "edge_color"
     )
-
-    coordinates = pd.DataFrame.from_dict(
-        nxCoordinates,
-        orient='index'
-    ).rename(
-        {0: 'x', 1: 'y'}, 
-        axis = 'columns'
-    )
+    
+    if nxCoordinates:
+        coordinates = pd.DataFrame.from_dict(
+            nxCoordinates,
+            orient='index'
+        ).rename(
+            {0: 'x', 1: 'y'}, 
+            axis = 'columns'
+        )
+    else:
+        coordinates = pd.DataFrame(columns=['x', 'y'])
 
     graph.node_renderer.data_source.data['nodesize'] = \
         [0.01*len(_) for _ in graph.node_renderer.data_source.data['index']]
@@ -229,21 +272,22 @@ def BOKEH_HypSpace_MakeGraphRenderer(
 
     coordinates['nodenames'] = coordinates.index
     coordinates['nodenames'] = coordinates['nodenames'].apply(lambda x: x+'\n'+x)
+    
+    if session['nxGraph']:
+        graph.node_renderer.glyph = Circle(
+            #size = 'nodesize',
+            radius = 'nodesize',
+            fill_color = 'nodecolors',
+            fill_alpha = 0.7,
+        )
+        graph.node_renderer.nonselection_glyph = graph.node_renderer.glyph
 
-    graph.node_renderer.glyph = Circle(
-        #size = 'nodesize',
-        radius = 'nodesize',
-        fill_color = 'nodecolors',
-        fill_alpha = 0.7,
-    )
-    graph.node_renderer.nonselection_glyph = graph.node_renderer.glyph
-
-    graph.edge_renderer.glyph = MultiLine(
-        line_color="edge_color", 
-        line_dash="solid",
-        line_alpha=0.8, 
-        line_width=2
-    )
+        graph.edge_renderer.glyph = MultiLine(
+            line_color="edge_color", 
+            line_dash="solid",
+            line_alpha=0.8, 
+            line_width=2
+        )
 
 
     coordinatesCDS = ColumnDataSource(data=coordinates)
@@ -570,7 +614,7 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
     Fully takes care of ShortestPath graph
     '''
     Gpath, GposChain = gr.NX_ConstructHypothesisChainGraph(
-        shortestPathEdges = list(zip(shortestPathNodes, shortestPathNodes[1:])),
+        shortestPathEdges = list(zip(shortestPathNodes, shortestPathNodes[1:])) if shortestPathNodes else [],
         scale = hypSP_distanceBetweenNodes,
     )
 
@@ -580,14 +624,18 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
 
     #hypPlot.renderers.append(hypGraph)
     hypGraph.node_renderer.nonselection_glyph = hypGraph.node_renderer.glyph
-
-    hypCoordinates = pd.DataFrame.from_dict(
-        GposChain,
-        orient='index'
-    ).rename(
-        {0: 'x', 1: 'y'}, 
-        axis = 'columns'
-    )
+    
+    if GposChain:
+        hypCoordinates = pd.DataFrame.from_dict(
+            GposChain,
+            orient='index'
+        ).rename(
+            {0: 'x', 1: 'y'}, 
+            axis = 'columns'
+        )
+    else:
+        hypCoordinates = pd.DataFrame(columns=['x', 'y'])
+    
     hypCoordinates['TopicInfo'] = \
     hypCoordinates.index.to_series().apply(
         lambda x: tm.GetFormattedStringOfTopics(
@@ -602,6 +650,7 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
         .apply(Add_pref_name)
     
     hypCoordinatesCDS = ColumnDataSource(data=hypCoordinates)
+    
 
     hypLabels = Text(x='x', y='y', text='TopicInfo', 
                       text_align = 'center',
@@ -610,7 +659,7 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
                       text_line_height = 1,
                       text_font_size = hypLabelsFontSize,
                      )
-
+    
     hypGraph.node_renderer.glyph = Rect(width = hypGlyphWidth,
                                         height = hypGlyphHeight,
                                         fill_color = 'red',
@@ -666,9 +715,13 @@ dfSentPerTopic = pd.DataFrame(
     {},
     columns = ['Sentence ID', 'Score']
 )
-dfSentPerTopic_show = dfSentPerTopic \
-    .merge(dfSentTexts, how='left') \
-    .sort_values(by='Score', ascending = False)
+
+if len(dfSentTexts) > 0:
+    dfSentPerTopic_show = dfSentPerTopic \
+        .merge(dfSentTexts, how='left') \
+        .sort_values(by='Score', ascending = False)
+else:
+    dfSentPerTopic_show = pd.DataFrame()
 
 CDS_sentPerTopic = ColumnDataSource(dfSentPerTopic_show)
 
@@ -755,6 +808,7 @@ callbackFontSize = CustomJS(
         labelset.text_line_height = fs*1/currentZoom;
     }
     labelset.change.emit();
+    console.log(labelset.text_line_height);
     """)
 
 graph.node_renderer.data_source.selected.on_change(
@@ -796,7 +850,8 @@ def Gen_FillCoordinateSpace(p, session, shortestPathNodes) -> None:
         if 'topic' in topic:
             for term in session['topicTerms'][topic]:
                 if term[:2] == 'm:' and term[2:] in mDict:
-                    term_print = f'{term}_{mDict[term[2:]]}'
+                    #term_print = f'{term}_{mDict[term[2:]]}'
+                    term_print = f'm:{mDict[term[2:]]}'
                 else:
                     term_print = term
                 embLabels.append(term)
@@ -818,8 +873,9 @@ def Gen_FillCoordinateSpace(p, session, shortestPathNodes) -> None:
     term1 = session['source']
     term2 = session['target']
     for term in [term1, term2]:
-        if term[:2] == 'm:' and term[2:] in mDict:
-            embLabels_print.append(f'{term}_{mDict[term[2:]]}')
+        if term and term[:2] == 'm:' and term[2:] in mDict:
+            #embLabels_print.append(f'{term}_{mDict[term[2:]]}')
+            embLabels_print.append(f'm:{mDict[term[2:]]}')
         else:
             embLabels_print.append(term)
     #embLabels_print.append()
@@ -834,7 +890,7 @@ def Gen_FillCoordinateSpace(p, session, shortestPathNodes) -> None:
        # except:
          #   print(f'Could not find coordinates for: {l}')
             
-    embCoords = np.array([session['tokenCoordinatesPCA'][key] for key in embLabels])
+    embCoords = np.array([session['tokenCoordinatesPCA'][key] for key in embLabels if key is not None])
         
     #------#
     #pca.fit(embFullCoords)
@@ -858,8 +914,8 @@ def Gen_FillCoordinateSpace(p, session, shortestPathNodes) -> None:
         if 'topic' in key:
             return 'salmon'
 
-    circle = p.circle(embCoords[:,0], 
-                 embCoords[:,1],
+    circle = p.circle(embCoords[:,0] if embCoords.size > 0 else [], 
+                 embCoords[:,1] if embCoords.size > 0 else [],
                  color=[Colormap(_) for _ in embLabels], 
                  fill_alpha=0.9, 
                  size=10)
@@ -867,9 +923,9 @@ def Gen_FillCoordinateSpace(p, session, shortestPathNodes) -> None:
     
     
     ldf = pd.DataFrame({
-        'labels': embLabels_print,
-        'x': embCoords[:,0],
-        'y': embCoords[:,1]
+        'labels': embLabels_print if len([_ for _ in embLabels_print if _ is not None]) else [],
+        'x': embCoords[:,0] if embCoords.size > 0 else [],
+        'y': embCoords[:,1] if embCoords.size > 0 else [],
     })
     
     source = ColumnDataSource(ldf)
@@ -947,6 +1003,48 @@ button_saveSession.on_click(BOKEH_Callback_SaveSesionButtonHandler)
 
 
     ### Settings pane ###
+    
+## Pick a checkpoint panel
+
+select_vckpt = Select(
+    title="Pick a checkpoint:", 
+    value=vckpt_name,
+    options=io.PATHLIB_GetCkptList(),
+)
+
+
+button_load_vckpt = Button(label='Load Session')
+#button_load_vckpt.on_click(BOKEH_Callback_LoadVckpt)
+button_load_vckpt.js_on_event(
+    ButtonClick, 
+    CustomJS(
+        args = dict(
+            serv_addr = f"http://{host_addr['ip']}:{host_addr['vis_port']}/new_AgathaHypothesisSpace",
+            select_vckpt_obj = select_vckpt,
+        ),
+        code = """
+            window.open(
+                serv_addr + "?vckpt=" + select_vckpt_obj.value,
+                "_self"
+                )
+        """),
+)
+
+button_open_corpExp = Button(label='Open Corpus Explorer')
+#button_load_vckpt.on_click(BOKEH_Callback_LoadVckpt)
+button_open_corpExp.js_on_event(
+    ButtonClick, 
+    CustomJS(
+        args = dict(
+            serv_addr = f"http://{host_addr['ip']}:{host_addr['corp_port']}/CorpusExplorer",
+            select_vckpt_obj = select_vckpt,
+        ),
+        code = """
+            window.open(
+                serv_addr + "?vckpt=" + select_vckpt_obj.value,
+                )
+        """),
+)
     
 ## KNN settings ##
 div_KNN = Div(
@@ -1081,7 +1179,10 @@ div_Save= Div(
  #             sizing_mode = 'stretch_width'
  #            )
     
-settingsPane = column([div_KNN,
+settingsPane = column([select_vckpt,
+                       button_load_vckpt, 
+                       button_open_corpExp,
+                       div_KNN,
                        slider_KNN_n_neighbors, 
                        #slider_KNN_top_n_tokens,
                        div_LDA,

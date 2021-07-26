@@ -52,3 +52,28 @@ def PICKLE_SaveSession(
     with open(sessionPath, 'wb') as f:
         pickle.dump(session, f)
     print(f'Session saved to checkpoint: {sessionPath}')
+    
+    
+def PATHLIB_GetCkptList() -> list:
+    """
+    Returns all ckpt names found in Checkpoints folder.
+    """
+    
+    ckptPath = pathlib.Path(os.getcwd()).joinpath('Checkpoints')
+    return [fpath.name for fpath in ckptPath.glob('*.vckpt')]
+
+def BOKEH_GetVckptFromURL(session_context) -> str:
+    """
+    Checks URL address and returns ckpt name
+    """
+    args = session_context.request.arguments
+    
+    try:
+        vckpt_name = args.get('vckpt')[0].decode("utf-8")
+    except:
+        vckpt_name = ''
+        
+    if '.vckpt' not in vckpt_name:
+        return ''
+    else:
+        return vckpt_name

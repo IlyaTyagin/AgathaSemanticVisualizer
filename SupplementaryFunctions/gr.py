@@ -196,7 +196,10 @@ def SKLEARN_CalculateGraphLayout(session) -> None:
     
     print('calculating UMAP...')
     reducer = umap.UMAP()
-    vectors2 = reducer.fit_transform(vectors512)
+    if vectors512:
+        vectors2 = reducer.fit_transform(vectors512)
+    else:
+        vectors2 = np.array([])
     
     center_offset = np.mean(vectors2, axis=0)
     
