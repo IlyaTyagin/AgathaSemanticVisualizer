@@ -1019,7 +1019,7 @@ button_load_vckpt.js_on_event(
     ButtonClick, 
     CustomJS(
         args = dict(
-            serv_addr = f"http://{host_addr['ip']}:{host_addr['vis_port']}/new_AgathaHypothesisSpace",
+            serv_addr = f"http://{host_addr['ip']}:{host_addr['vis_port']}/AgathaHypothesisSpace",
             select_vckpt_obj = select_vckpt,
         ),
         code = """
