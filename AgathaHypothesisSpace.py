@@ -110,7 +110,7 @@ with open('host_addr') as f:
     for line in f:
         k, v = line.strip().split(': ')
         host_addr[k] = v
-assert len(host_addr) == 3
+assert len(host_addr) == 1
 
 if '.vckpt' not in vckpt_name:
 ## empty graph (testing)
@@ -1008,9 +1008,12 @@ button_saveSession.on_click(BOKEH_Callback_SaveSesionButtonHandler)
 
 select_vckpt = Select(
     title="Pick a checkpoint:", 
-    value=vckpt_name,
-    options=io.PATHLIB_GetCkptList(),
+    value='-----',
+    options=['-----'] + io.PATHLIB_GetCkptList(),
 )
+
+if vckpt_name in io.PATHLIB_GetCkptList():
+    select_vckpt.value = vckpt_name
 
 
 button_load_vckpt = Button(label='Load Session')
@@ -1019,7 +1022,7 @@ button_load_vckpt.js_on_event(
     ButtonClick, 
     CustomJS(
         args = dict(
-            serv_addr = f"http://{host_addr['ip']}:{host_addr['vis_port']}/AgathaHypothesisSpace",
+            serv_addr = f"http://{host_addr['ip']}/AgathaHypothesisSpace",
             select_vckpt_obj = select_vckpt,
         ),
         code = """
@@ -1036,7 +1039,7 @@ button_open_corpExp.js_on_event(
     ButtonClick, 
     CustomJS(
         args = dict(
-            serv_addr = f"http://{host_addr['ip']}:{host_addr['corp_port']}/CorpusExplorer",
+            serv_addr = f"http://{host_addr['ip']}/CorpusExplorer",
             select_vckpt_obj = select_vckpt,
         ),
         code = """
