@@ -2,7 +2,15 @@
 
 Visualize hypotheses generated with AGATHA system to assist the process of finding new undiscovered knowledge.
 
-**Submit your queries online: [link](https://forms.gle/5rbEz4pLTfysfiFJ9)**
+**Submit your queries here: [link](https://forms.gle/5rbEz4pLTfysfiFJ9)**
+
+## SYSTEM IS NOW FULLY ONLINE (no installation required)
+
+### Links:
+
+* [Semantic Visualizer](http://aacs.opalstacked.com/AgathaHypothesisSpace)
+* [Term Database](http://aacs.opalstacked.com/TermDB)
+* [Spreadsheet of pre-computed COVID-19-related pairs](https://docs.google.com/spreadsheets/d/1EvWjB7J-Ou8-9w7NRYlZCmt8tp0lPn6nobL9bQ5iTSA/edit#gid=0)
 
 **Project wiki with additional details is available on GitHub:** [Wiki](https://github.com/IlyaTyagin/AgathaSemanticVisualizer/wiki)
 
