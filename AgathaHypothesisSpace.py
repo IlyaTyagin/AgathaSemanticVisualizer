@@ -57,6 +57,7 @@ from bokeh.models.annotations import Title
 from bokeh.models.widgets import HTMLTemplateFormatter
 from bokeh.themes import built_in_themes
 
+from os.path import dirname, join
 import pandas as pd
 import networkx as nx
 import numpy as np
@@ -102,6 +103,7 @@ try:
     vckpt_name = args.get('vckpt')[0].decode("utf-8")
 except:
     vckpt_name = ''
+
 
     
 ## Host addresses (file host_addr)
@@ -218,6 +220,11 @@ bo.BOKEH_HypSpace_CustomizeFigureObj(figureObj = plot,
                                      session = session,
                                     )
 
+## Making save button work
+session_text_savefile = ColumnDataSource(data=dict())
+session_text_savefile.data = {
+    'text_data': [bo.BOKEH_Save_session_part_to_text(session, shortestPathNodes)]
+}
 
 def BOKEH_HypSpace_MakeGraphRenderer(
     session:dict,
@@ -415,13 +422,13 @@ def Callback_BOKEH_ClickOnNode(attr, old, new) -> None:
         axis = 'columns'
     )
     hypCoordinatesNew['TopicInfo'] = \
-    hypCoordinatesNew.index.to_series().apply(
-        lambda x: tm.GetFormattedStringOfTopics(
-            session['topicTerms'], 
-            x,
-            print_nTokensPerTopicSP,
-            termsDict=mDict,
-        ) if 'topic' in x else x)
+        hypCoordinatesNew.index.to_series().apply(
+            lambda x: tm.GetFormattedStringOfTopics(
+                session['topicTerms'], 
+                x,
+                print_nTokensPerTopicSP,
+                termsDict=mDict,
+            ) if 'topic' in x else x)
     
         
     ## This will add preferred names to UMLS terms on "Shortest path in detail" pane
@@ -492,6 +499,12 @@ def Callback_BOKEH_ClickOnNode(attr, old, new) -> None:
             #CDS_sentPerTopic.data = copy.deepcopy(dict(CDS_sentPerTopic_new.data))
     
     ## Recunstruct button callback, probably one of the key functions in our pipeline
+    
+    session_text_savefile.data = {
+        'text_data': [bo.BOKEH_Save_session_part_to_text(session, shortestPathNodes)]
+    }
+    
+    return None
     
 def BOKEH_Callback_ReconstructButton() -> None:
     '''
@@ -564,6 +577,10 @@ def BOKEH_Callback_ReconstructButton() -> None:
                                                                     shortestPathNodes)
     #plot_CoordinateSpace.renderers.append(rend_circle_coordSpace)
     CDS_coordSpace.data = dict(CDS_coordSpace_new.data)
+    
+    session_text_savefile.data = {
+        'text_data': [bo.BOKEH_Save_session_part_to_text(session, shortestPathNodes)]
+    }
     
     
             ##### GRAPH DEFENITION BLOCK #####
@@ -977,6 +994,9 @@ def BOKEH_Callback_SaveSesionButtonHandler() -> None:
     print(f"Save Session button pressed. Performing Session saving to {locVars['savePath']} ...")
     try:
         io.PICKLE_SaveSession(session, locVars['savePath'])
+
+        print('Save button clicked.')
+        #print(session_text_savefile.data)
     except Exception as e:
         print('''Couldn't save current session. Please check the output file correctness. ''')
         print(e)
@@ -990,9 +1010,10 @@ input_showSaveSessionPath = TextInput(
     value="Enter checkpoint name...", title = 'Save current session to file:',
     sizing_mode = 'stretch_width',)
           
-          
 button_loadSession = Button(label='Load Session', max_width = 100)
-button_saveSession = Button(label='Save Session', max_width = 100)
+button_saveSession = Button(label='Save (on server)', max_width = 100)
+button_saveSession_loc = Button(label='Save (locally)', max_width = 100)
+button_saveSent_loc = Button(label='Save sentences', max_width = 100)
 
 # Callbacks:
 input_showLoadSessionPath.on_change("value", BOKEH_Callback_LoadSesionTextfieldHandler)
@@ -1000,6 +1021,11 @@ input_showSaveSessionPath.on_change("value", BOKEH_Callback_SaveSesionTextfieldH
 
 button_loadSession.on_click(BOKEH_Callback_LoadSesionButtonHandler)
 button_saveSession.on_click(BOKEH_Callback_SaveSesionButtonHandler)
+
+button_saveSession_loc.js_on_click(
+    CustomJS(args=dict(source=session_text_savefile),
+             code=open(join(dirname(__file__), "download_results.js")).read())
+)
 
 
     ### Settings pane ###
@@ -1204,7 +1230,11 @@ settingsPane = column([select_vckpt,
                        #button_loadSession,
                        
                        input_showSaveSessionPath,
-                       button_saveSession,
+                       row(
+                           button_saveSession, 
+                           button_saveSession_loc, 
+                           #button_saveSent_loc
+                       ),
                        
                        multi_choice,
                       ],
