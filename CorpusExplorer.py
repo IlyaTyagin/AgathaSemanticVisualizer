@@ -154,7 +154,7 @@ data_table = DataTable(
                    title = 'Sentence Text',
                    width = 700,
                    formatter = HTMLTemplateFormatter(
-                       template="""<span href="#" data-toggle="tooltip" title="<%= value %>"><%= value %></span>"""),
+                       template='''<a href="https://pubmed.ncbi.nlm.nih.gov/<%= PMID %>" target="_blank"><%= value %></a>'''),
                   ),
         TableColumn(field = 'Sentence Tokens', 
                    title = 'Sentence Tokens',
