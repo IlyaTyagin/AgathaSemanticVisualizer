@@ -153,8 +153,8 @@ data_table = DataTable(
         TableColumn(field = 'Sentence Text', 
                    title = 'Sentence Text',
                    width = 700,
-                   formatter = HTMLTemplateFormatter(
-                       template='''<a href="https://pubmed.ncbi.nlm.nih.gov/<%= PMID %>" target="_blank"><%= value %></a>'''),
+                   #formatter = HTMLTemplateFormatter(
+                   #    template='''<a href="https://pubmed.ncbi.nlm.nih.gov/<%= PMID %>" target="_blank"><%= value %></a>'''),
                   ),
         TableColumn(field = 'Sentence Tokens', 
                    title = 'Sentence Tokens',
