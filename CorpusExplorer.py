@@ -167,6 +167,7 @@ data_table = DataTable(
     width_policy='max',
     height=800,
     #width=1200,
+    editable=True,
 )
 
 source_tokens = ColumnDataSource(data=df_tokens[:1000])
@@ -198,6 +199,7 @@ tokens_table = DataTable(
     height_policy='max',
     height=800,
     #width=600,
+    editable=True,
 )
 
     ## Download button ##
