@@ -1,6 +1,8 @@
 import networkx as nx
 from sklearn.neighbors import kneighbors_graph
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
+import sklearn.metrics
 import pandas as pd
 import numpy as np
 from typing import Tuple
@@ -40,8 +42,8 @@ def Gen_GetTopicsCentroids(
         }
         
         #Coordinates part
-        for term in list(topic.keys())[:
-            #:session['params']['KNN_nTopicsContributingToCentroidCalculation']
+        for term in list(topic.keys())[
+          :session['params']['KNN_nTopicsContributingToCentroidCalculation']
         ]:
             if type(session['tokenCoordinates'][term]) == np.ndarray:
                 vectors.append(
@@ -53,11 +55,21 @@ def Gen_GetTopicsCentroids(
         centroidCoords = sum(vectors)/sum(vectProbs)
         
         #Radiuses part
-        sums = 0
-        for v in vectors:
-            sums += (np.linalg.norm(v - centroidCoords))**2
+#         sums = 0
+#         for v in vectors:
+#             sums += (np.linalg.norm(v - centroidCoords))**2
 
-        centroidRadius = np.sqrt(sums/len(vectors))
+#         centroidRadius = np.sqrt(
+#           sums/len(vectors)
+#         )
+        
+        centroidRadius = (
+          round(
+            sklearn.metrics.pairwise_distances(vectors).mean(),
+            4
+          )
+        )
+        
 
         res[f'topic_{i}'] = centroidCoords
         resRads[f'topic_{i}'] = centroidRadius
@@ -71,6 +83,8 @@ def Gen_GetTopicsCentroids(
             'Radiuses': resRads
         }
     )
+    
+    print(f'Topic size: {len(topic)}')
     
     #return dict(
      #   {
@@ -194,24 +208,34 @@ def SKLEARN_CalculateGraphLayout(session) -> None:
     
     #vectors2 = pca.transform(vectors512)
     
-    print('calculating UMAP...')
-    reducer = umap.UMAP()
-    if vectors512:
-        vectors2 = reducer.fit_transform(vectors512)
-    else:
-        vectors2 = np.array([])
+    reducers = {
+      'UMAP':umap.UMAP(),
+      'MDS': MDS(n_components=2),
+      'PCA': PCA(n_components=2),
+    }
     
-    center_offset = np.mean(vectors2, axis=0)
+    print('calculating dim red...')
     
-    for i in range(len(vectors2)):
-        vectors2[i] = vectors2[i] - center_offset
+    for reducer_name in reducers: 
+    #reducer = umap.UMAP()
+      if vectors512:
+          vectors2 = reducers[reducer_name].fit_transform(vectors512)
+      else:
+          vectors2 = np.array([])
+
+      center_offset = np.mean(vectors2, axis=0)
+
+      for i in range(len(vectors2)):
+          vectors2[i] = vectors2[i] - center_offset
+
+      layout = dict()
+      for i, node in enumerate(nodenames):
+          layout[node] = vectors2[i]
     
-    layout = dict()
-    for i, node in enumerate(nodenames):
-        layout[node] = vectors2[i]
-    
-    session['nxLayout'] = layout
-    return layout
+      #session['nxLayout'][reducer_name] = layout
+      if reducer_name == 'UMAP':
+        session['nxLayout'] = layout
+        return layout
 
 
 def SKLEARN_PerformTokensCoordsPCA(session) -> None:

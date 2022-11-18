@@ -50,7 +50,8 @@ from bokeh.models import (BoxSelectTool,
                           Dropdown,
                           Select,
                           MultiChoice,
-                          OpenURL
+                          OpenURL,
+                          RadioButtonGroup
                          )
 #from bokeh.core.enums import AutosizeMode
 from bokeh.models.annotations import Title
@@ -136,6 +137,9 @@ else:
 #session['params']['selected_vckpt'] = pathToSession
 
 mDict = session['mDict']
+
+# avoid missing param key errors
+session['params'] = defaultdict(dict, session['params'])
 
 #gr.SKLEARN_PerformTokensCoordsPCA(session)
 
@@ -285,7 +289,7 @@ def BOKEH_HypSpace_MakeGraphRenderer(
             #size = 'nodesize',
             radius = 'nodesize',
             fill_color = 'nodecolors',
-            fill_alpha = 0.7,
+            fill_alpha = 0.8,
         )
         graph.node_renderer.nonselection_glyph = graph.node_renderer.glyph
 
@@ -463,7 +467,7 @@ def Callback_BOKEH_ClickOnNode(attr, old, new) -> None:
         
         dfSentPerTopicNew = pd.DataFrame(
             session['docsPerTopic'][nName], 
-            columns = ['Sentence ID', 'Score']
+            columns = ['Sentence_ID', 'Score']
         )
         #print('''session['docsPerTopic']:\n''', session['docsPerTopic'][nName][:5])
         #print(f"Is dfSentPerTopicNew empty? Len: {len(dfSentPerTopicNew)}")
@@ -472,9 +476,24 @@ def Callback_BOKEH_ClickOnNode(attr, old, new) -> None:
         #Error is somewhere there....
         dfSentPerTopic_show_new = dfSentPerTopicNew \
             .merge(dfSentTexts, how='left') \
-            .merge(dfSentTokens, how = 'left', on = 'Sentence ID') \
+            .merge(dfSentTokens, how = 'left', on = 'Sentence_ID') \
             .sort_values(by='Score', ascending = False) 
-
+        
+        dfSentPerTopic_show_new['PMID'] = dfSentPerTopic_show_new['Sentence_ID'].apply(
+          lambda x: x.split(':')[1]
+        )
+        
+        if 'Sentence_ID' in dfSentPerTopic_show_new:
+          dfSentPerTopic_show_new['PMID'] = dfSentPerTopic_show_new['Sentence_ID'].apply(
+            lambda x: x.split(':')[1]
+          )
+          dfSentPerTopic_show_new['Source'] = dfSentPerTopic_show_new['Sentence_ID'].apply(
+            lambda x: session['sent_sources_dict'][x]
+          )
+        else:
+          dfSentPerTopic_show_new['PMID'] = '-'
+          dfSentPerTopic_show_new['Source'] = '-'
+        
         CDS_sentPerTopic_new = ColumnDataSource(dfSentPerTopic_show_new)
 
         #CDS_sentPerTopic.data = {}
@@ -594,7 +613,7 @@ def Gen_ConstructGraphFromScratch(
     Produces: nx.Graph which is shown in Hypothesis Space panel.
     Uses abovemention functions, just summarizes everything.
     '''
-    topicTerms, docsPerTopic = tm.GENSIM_CalculateLDATopics(
+    topicTerms, docsPerTopic, _, __  = tm.GENSIM_CalculateLDATopics(
         session,
     )
     #session['topicTerms'] = topicTerms
@@ -675,13 +694,16 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
                       text_font_style = 'bold',
                       text_line_height = 1,
                       text_font_size = hypLabelsFontSize,
+                      text_alpha = 1,
                      )
     
     hypGraph.node_renderer.glyph = Rect(width = hypGlyphWidth,
                                         height = hypGlyphHeight,
                                         fill_color = 'red',
-                                        fill_alpha = 0.8
+                                        fill_alpha = 0.3,
+                                        #line_alpha = 0.5
                                        )
+    hypGraph.edge_renderer.glyph.line_alpha = 0.3
 
     #hypPlot.add_glyph(hypCoordinatesCDS, hypLabels)
 
@@ -696,7 +718,7 @@ def BOKEH_DrawHypothesisChainGraph(shortestPathNodes):
     )
     #hypPlot.toolbar.active_scroll = hypWheel_zoom
     hypPlot.toolbar_location = None
-    
+    hypGraph.level = 'underlay'
     return hypGraph, hypCoordinatesCDS, hypLabels
 
 hypGraph1, hypCoordinatesCDS, hypLabels = BOKEH_DrawHypothesisChainGraph(
@@ -714,14 +736,14 @@ hypPlot.add_glyph(hypCoordinatesCDS, hypLabels)
 dfSentTexts = pd.DataFrame.from_dict(
     session['sentenceTexts'].items(),
 ).rename(
-    {0: 'Sentence ID', 1: 'Sentence Text'}, 
+    {0: 'Sentence_ID', 1: 'Sentence Text'}, 
     axis = 'columns'
 )
 
 dfSentTokens = pd.DataFrame.from_dict(
     session['sentenceTokens'].items(),
 ).rename(
-    {0: 'Sentence ID', 1: 'Sentence Tokens'}, 
+    {0: 'Sentence_ID', 1: 'Sentence Tokens'}, 
     axis = 'columns'
 )
 
@@ -730,7 +752,7 @@ dfSentTokens = pd.DataFrame.from_dict(
 dfSentPerTopic = pd.DataFrame(
     #session['docsPerTopic']['topic_10'], 
     {},
-    columns = ['Sentence ID', 'Score']
+    columns = ['Sentence_ID', 'Score']
 )
 
 if len(dfSentTexts) > 0:
@@ -739,19 +761,61 @@ if len(dfSentTexts) > 0:
         .sort_values(by='Score', ascending = False)
 else:
     dfSentPerTopic_show = pd.DataFrame()
+    
+
+if 'sent_sources_dict' not in session:
+  session['sent_sources_dict'] = defaultdict(str)
+  
+dfSentPerTopic_show = dfSentPerTopic_show.rename(
+  columns={
+    'Sentence ID': 'Sentence_ID'
+  }
+)
+if 'Sentence_ID' in dfSentPerTopic_show:
+  dfSentPerTopic_show['PMID'] = dfSentPerTopic_show['Sentence_ID'].apply(
+    lambda x: x.split(':')[1]
+  )
+  dfSentPerTopic_show['Source'] = dfSentPerTopic_show['Sentence_ID'].apply(
+    lambda x: session['sent_sources_dict'][x]
+  )
+else:
+  dfSentPerTopic_show['PMID'] = '-'
+  dfSentPerTopic_show['Source'] = '-'
+
+print('sentence sources: ', len(dfSentPerTopic_show['Source'].drop_duplicates()))
+
+
+print(dfSentPerTopic_show.columns)
 
 CDS_sentPerTopic = ColumnDataSource(dfSentPerTopic_show)
 
+
+print(CDS_sentPerTopic.data.keys())
+
 data_table = DataTable(source=CDS_sentPerTopic, 
                        columns=[
-                           TableColumn(field = 'Sentence ID',
-                                       title = 'Sentence ID',
+                           TableColumn(field = 'Sentence_ID',
+                                       title = 'Sentence_ID',
                                        width = 60,
+                                       formatter = HTMLTemplateFormatter(
+                                         template='<code><%= value %></code>')
+                                      ), 
+                           TableColumn(field = 'PMID',
+                                       title = 'PMID',
+                                       width = 45,
+                                       formatter = HTMLTemplateFormatter(template=
+    '<a href="https://pubmed.ncbi.nlm.nih.gov/<%= PMID %>" target="_blank"><%= value %></a>')
                                       ), 
                            TableColumn(field = 'Score', 
                                        title = 'Score',
                                        width = 70,
-                                      ), 
+                                      ),
+                           TableColumn(field = 'Source', 
+                                       title = 'Source',
+                                       width = 70,
+                                       formatter = HTMLTemplateFormatter(
+                                           template="""<span href="#" data-toggle="tooltip" title="<%= value %>"><%= value %></span>"""),
+                                      ),
                            TableColumn(field = 'Sentence Text', 
                                        title = 'Sentence Text',
                                        width = 700,
@@ -780,10 +844,38 @@ def BOKEH_UpdateTopicsInfo(
     session:dict,
     divTopics:Div,
 ) -> None:
-    divStr = '<p><b><u>List of topics:</u></b></p>'
+    divStr = '' 
+    
+    if 'Radiuses' in session['centroidsCoords']:
+      avg_rad = np.mean(
+        list(session['centroidsCoords']['Radiuses'].values())
+      )
+      min_rad = np.min(
+        list(session['centroidsCoords']['Radiuses'].values())
+      )
+      max_rad = np.max(
+        list(session['centroidsCoords']['Radiuses'].values())
+      )
+      divStr += f'<p> Avg radius: {avg_rad}</p>'
+      divStr += f'<p> Min radius: {min_rad}</p>'
+      divStr += f'<p> Max radius: {max_rad}</p>'
+      
+    if 'global_sp_decodified' in session:
+      print('Global SP is here, adding to vis...')
+      divStr += '<p> Global SP: </p><ul>'
+      divStr += ''.join([f"<li>{node}</li>" for node in session['global_sp_decodified'].values()])
+      divStr += '</ul>'
+    
+    divStr += '<p><b><u>List of topics:</u></b></p>'
+    
     divStr += '<ul>'
+        
     for key in list(session['topicTerms'].keys()):
-        divStr += f'<li><b>{key}</b></li>'
+      
+        topic_radius = \
+          session['centroidsCoords']['Radiuses'][key]
+        
+        divStr += f'''<li><b>{key}; R={topic_radius}</b></li>'''
         divStr += '<ul>'
         for token in session['topicTerms'][key]:
             if token[0] == 'm':
@@ -818,14 +910,14 @@ BOKEH_UpdateTopicsInfo(session, divTopics)
 callbackFontSize = CustomJS(
     args = dict(labelset=labels, pl = plot, fs = fontScaling, fc = fontConst), 
     code="""
-    var currentZoom = (pl.x_range.end - pl.x_range.start);
-    labelset.text_font_size = String(fs*fc/currentZoom) + "vw";
-    if (currentZoom > 1)
-    {
-        labelset.text_line_height = fs*1/currentZoom;
-    }
-    labelset.change.emit();
-    console.log(labelset.text_line_height);
+      var currentZoom = (pl.x_range.end - pl.x_range.start);
+      labelset.text_font_size = String(fs*fc/currentZoom) + "vw";
+      if (currentZoom > 1)
+      {
+          labelset.text_line_height = fs*1/currentZoom;
+      }
+      labelset.change.emit();
+      console.log(labelset.text_line_height);
     """)
 
 graph.node_renderer.data_source.selected.on_change(
@@ -934,7 +1026,7 @@ def Gen_FillCoordinateSpace(p, session, shortestPathNodes) -> None:
     circle = p.circle(embCoords[:,0] if embCoords.size > 0 else [], 
                  embCoords[:,1] if embCoords.size > 0 else [],
                  color=[Colormap(_) for _ in embLabels], 
-                 fill_alpha=0.9, 
+                 fill_alpha=0.8, 
                  size=10)
     #labels
     
@@ -1089,6 +1181,7 @@ def BOKEH_UpdateParam(paramName: str, val:Any) -> None:
     
     return None
 
+  
 slider_KNN_n_neighbors = Slider(start=2, end=15, value=session['params']['KNN_nNeighbors'], step=1, 
                                 title="N neighbors")
 slider_KNN_n_neighbors.on_change("value", 
@@ -1099,6 +1192,16 @@ slider_KNN_top_n_tokens = Slider(start=3, end=50, value=10, step=1,
                                  title="Top N significant tokens in centroids coords")
 slider_KNN_top_n_tokens.on_change("value", 
                                  lambda attr, old, new: BOKEH_UpdateParam('KNN_nTopicsContributingToCentroidCalculation', int(new)))
+
+  # 
+layout_radiob_labels = ["UMAP", "PCA", "MDS"]
+layout_radiob = RadioButtonGroup(
+  labels=layout_radiob_labels, 
+  active=0,
+) 
+layout_radiob.on_click(
+  lambda new: BOKEH_UpdateParam('topical_network_layout', new)
+)
 
 ## LDA settings ## 
 
@@ -1138,17 +1241,17 @@ slider_LDA_bias_mesh.on_change("value",
                               lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_mesh', int(new)))
 
 
-slider_LDA_bias_lemmas = Slider(start=1, end=5, value=session['params']['LDA_bias_lemmas'], step=1, title="lemmas")
+slider_LDA_bias_lemmas = Slider(start=0, end=5, value=session['params']['LDA_bias_lemmas'], step=1, title="lemmas")
 slider_LDA_bias_lemmas.on_change("value", 
                               lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_lemmas', int(new)))
 
 
-slider_LDA_bias_entities = Slider(start=1, end=5, value=session['params']['LDA_bias_entities'], step=1, title="entities")
+slider_LDA_bias_entities = Slider(start=0, end=5, value=session['params']['LDA_bias_entities'], step=1, title="entities")
 slider_LDA_bias_entities.on_change("value", 
                               lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_entities', int(new)))
 
 
-slider_LDA_bias_ngrams = Slider(start=1, end=5, value=session['params']['LDA_bias_ngrams'], step=1, title="ngrams")
+slider_LDA_bias_ngrams = Slider(start=0, end=5, value=session['params']['LDA_bias_ngrams'], step=1, title="ngrams")
 slider_LDA_bias_ngrams.on_change("value", 
                                  lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_ngrams', int(new)))
 
@@ -1188,6 +1291,24 @@ multi_choice.js_on_change("value", CustomJS(code="""
 multi_choice.on_change("value", 
                        lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_prefSemTypes', set(new)))
 
+# semtypes to avoid
+
+multi_choice_avoid = MultiChoice(
+    value=list(session['params']['LDA_bias_avoidSemTypes']), 
+    options=LABELS, 
+    title='Avoided Semantic Types: ',
+    height=200,
+    width = 300,
+    height_policy='fixed',
+    #css_classes=['Scrollable'],
+)
+multi_choice_avoid.js_on_change("value", CustomJS(code="""
+    console.log('multi_choice_avoid: value=' + this.value, this.toString())
+"""))
+
+multi_choice_avoid.on_change("value", 
+                       lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_avoidSemTypes', set(new)))
+
 
 ## Reconstruct button ##
 
@@ -1213,7 +1334,8 @@ settingsPane = column([select_vckpt,
                        button_open_corpExp,
                        div_KNN,
                        slider_KNN_n_neighbors, 
-                       #slider_KNN_top_n_tokens,
+                       slider_KNN_top_n_tokens,
+                       #layout_radiob,
                        div_LDA,
                        slider_LDA_n_topics,
                        slider_LDA_alpha,
@@ -1237,6 +1359,7 @@ settingsPane = column([select_vckpt,
                        ),
                        
                        multi_choice,
+                       multi_choice_avoid,
                       ],
                       #width = 200,
                      )

@@ -27,21 +27,26 @@ def GENSIM_CalculateLDATopics(
         fullSession['sentenceTokens'][key] for key in fullSession['sentenceTokens']
     ]
     
-    def BiasLDAdocument(text_document, weightsDict, prefSemTypes:set = set()):
+    def BiasLDAdocument(
+      text_document, 
+      weightsDict, 
+      prefSemTypes:set = set(),
+      avoidSemTypes:set = set()
+    ):
         
         result = []
-        if prefSemTypes:
-            for token in text_document:
-                if token[0] == 'm' and fullSession['tokenSemTypes'][token].intersection(prefSemTypes):
-                    for i in range(weightsDict['m']):
-                        result.append(token)
-                if token[0] in {'l', 'e', 'n'}:
-                    for i in range(weightsDict[token[0]]):
-                        result.append(token)
-        else:
-            for token in text_document:
+        for token in text_document:
+            if token[0] == 'm':
+              if fullSession['tokenSemTypes'][token].intersection(prefSemTypes):
+                for i in range(weightsDict['m']):
+                    result.append(token)
+              elif fullSession['tokenSemTypes'][token].intersection(avoidSemTypes):
+                pass
+              else:
+                result.append(token)
+            if token[0] in {'l', 'e', 'n'}:
                 for i in range(weightsDict[token[0]]):
-                        result.append(token)
+                    result.append(token)
         return result
     
     
@@ -54,10 +59,12 @@ def GENSIM_CalculateLDATopics(
     
     
     prefSemTypes = set(fullSession['params']['LDA_bias_prefSemTypes'])
+    avoidSemTypes = set(fullSession['params']['LDA_bias_avoidSemTypes'])
     print('Current preferred SemTypes: ', prefSemTypes)
+    print('Current avoided SemTypes: ', avoidSemTypes)
     
     text_corpus_biased = [
-        BiasLDAdocument(doc, weightsDict, prefSemTypes) for doc in text_corpus
+        BiasLDAdocument(doc, weightsDict, prefSemTypes, avoidSemTypes) for doc in text_corpus
     ]
     
     text_corpus_ids = [
@@ -85,7 +92,10 @@ def GENSIM_CalculateLDATopics(
     topicTerms = dict()
     for i in range(topic_model.num_topics):
         tempDict = dict()
-        for top in topic_model.get_topic_terms(i):
+        for top in topic_model.get_topic_terms(
+          i, 
+          topn=fullSession['params']['KNN_nTopicsContributingToCentroidCalculation']
+        ):
             tempDict[dictionary[top[0]]] = top[1]
         topicTerms[f'topic_{i}'] = tempDict
         
@@ -101,7 +111,7 @@ def GENSIM_CalculateLDATopics(
     fullSession['topicTerms'] = topicTerms
     fullSession['docsPerTopic'] = docsPerTopic
     
-    return topicTerms, docsPerTopic
+    return topicTerms, docsPerTopic, topic_model, int_corpus
 
 
 
