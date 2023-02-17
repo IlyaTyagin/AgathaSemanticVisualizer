@@ -1293,6 +1293,26 @@ multi_choice.on_change("value",
 
 # semtypes to avoid
 
+def Parse_text_input_avoid_text(text):
+    vals = set([st.strip() for st in text.split(';')])
+    return vals.intersection(set(LABELS))
+
+
+text_input_avoid = TextInput(
+    value='Split types by ;', 
+    title='Avoided ST (text input):',
+    width_policy = 'fixed',
+    width = 300,
+)
+text_input_avoid.js_on_change("value", CustomJS(code="""
+    console.log('text_input: value=' + this.value, this.toString())
+"""))
+
+
+button_sync_avoid = Button(label="Parse")
+button_sync_avoid.js_on_click(CustomJS(code="console.log('button_sync_avoid: click!', this.toString())"))
+
+
 multi_choice_avoid = MultiChoice(
     value=list(session['params']['LDA_bias_avoidSemTypes']), 
     options=LABELS, 
@@ -1309,6 +1329,17 @@ multi_choice_avoid.js_on_change("value", CustomJS(code="""
 multi_choice_avoid.on_change("value", 
                        lambda attr, old, new: BOKEH_UpdateParam('LDA_bias_avoidSemTypes', set(new)))
 
+def button_sync_avoid_callback() -> None:
+    new_vals = Parse_text_input_avoid_text(text_input_avoid.value)
+    print('multi_choice_avoid BEFORE: ', multi_choice_avoid.value)
+    BOKEH_UpdateParam('LDA_bias_avoidSemTypes', new_vals)
+    multi_choice_avoid.value = list(new_vals)
+    print('UPDATED LDA_bias_avoidSemTypes with:', new_vals)
+    print('multi_choice_avoid AFTER: ', multi_choice_avoid.value)
+    
+    return None 
+
+button_sync_avoid.on_click(button_sync_avoid_callback)
 
 ## Reconstruct button ##
 
@@ -1360,6 +1391,8 @@ settingsPane = column([select_vckpt,
                        
                        multi_choice,
                        multi_choice_avoid,
+                       text_input_avoid,
+                       button_sync_avoid,
                       ],
                       #width = 200,
                      )
